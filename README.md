@@ -175,6 +175,4 @@ The application uses Tailwind CSS for all styling. The design is:
 - Authentication tokens are stored in localStorage
 - Email export requires backend email service configuration (see backend README)
 
-## License
 
-ISC
