@@ -1,4 +1,4 @@
-# Inventory Management System - Frontend
+# adiyo inventory system - Frontend
 
 A comprehensive React frontend application for an Inventory Management System built with React, React Router, Tailwind CSS, and Axios.
 
@@ -43,9 +43,11 @@ npm install
 3. Create a `.env` file in the root directory (optional):
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
+VITE_IS_REG_OPEN=true
 ```
 
-If not specified, defaults to `http://localhost:3000/api`
+- `VITE_API_BASE_URL`: API base URL (defaults to `http://localhost:3000/api` if not specified)
+- `VITE_IS_REG_OPEN`: Enable/disable registration feature (defaults to `true` if not specified). Set to `"false"` to disable registration UI
 
 ## Running the Application
 

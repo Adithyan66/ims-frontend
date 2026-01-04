@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
 import ItemsList from './pages/Items/ItemsList';
 import CustomersList from './pages/Customers/CustomersList';
 import SalesList from './pages/Sales/SalesList';
@@ -18,17 +17,7 @@ const AppRoutes = () => {
     <Routes>
       <Route 
         path="/login" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={isAuthenticated ? <Navigate to="/items" replace /> : <Login />} 
       />
       <Route
         path="/items"
@@ -92,7 +81,7 @@ const AppRoutes = () => {
       />
       <Route 
         path="/" 
-        element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
+        element={<Navigate to={isAuthenticated ? "/items" : "/login"} replace />} 
       />
     </Routes>
   );

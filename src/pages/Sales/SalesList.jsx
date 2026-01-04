@@ -6,6 +6,7 @@ import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import SaleForm from './SaleForm';
+import { formatPrice } from '../../utils/formatters';
 
 const SalesList = () => {
   const [sales, setSales] = useState([]);
@@ -15,6 +16,8 @@ const SalesList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -61,16 +64,20 @@ const SalesList = () => {
     }
 
     try {
+      setDeletingId(sale._id);
       await salesService.delete(sale._id);
       fetchData();
     } catch (err) {
       setError('Failed to delete sale');
       console.error(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleSubmit = async (formData) => {
     try {
+      setSubmitting(true);
       if (editingSale) {
         await salesService.update(editingSale._id, formData);
       } else {
@@ -82,6 +89,8 @@ const SalesList = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save sale');
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -106,17 +115,18 @@ const SalesList = () => {
   };
 
   const getTotalPrice = (sale) => {
+    let total = 0;
     if (sale.totalAmount !== undefined) {
-      return Number(sale.totalAmount).toFixed(2);
+      total = Number(sale.totalAmount);
+    } else if (typeof sale.itemId === 'object' && sale.itemId !== null) {
+      total = sale.itemId.price * sale.quantity;
+    } else {
+      const item = items.find(i => i._id === sale.itemId);
+      if (item) {
+        total = item.price * sale.quantity;
+      }
     }
-    if (typeof sale.itemId === 'object' && sale.itemId !== null) {
-      return (sale.itemId.price * sale.quantity).toFixed(2);
-    }
-    const item = items.find(i => i._id === sale.itemId);
-    if (item) {
-      return (item.price * sale.quantity).toFixed(2);
-    }
-    return '0.00';
+    return formatPrice(total);
   };
 
   const columns = [
@@ -139,21 +149,21 @@ const SalesList = () => {
     { 
       key: 'total', 
       label: 'Total Price',
-      render: (_, row) => `₹${getTotalPrice(row)}`
+      render: (_, row) => getTotalPrice(row)
     }
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Sales</h1>
+        <h1 className="text-2xl font-bold text-gray-200">Sales</h1>
         <Button variant="primary" onClick={handleCreate}>
           Add New Sale
         </Button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-900 bg-opacity-30 border border-red-800 text-red-200 px-4 py-3 rounded">
           {error}
         </div>
       )}
@@ -166,6 +176,7 @@ const SalesList = () => {
           data={sales}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          deletingId={deletingId}
           emptyMessage="No sales found"
         />
       )}
@@ -185,6 +196,7 @@ const SalesList = () => {
             setIsModalOpen(false);
             setEditingSale(null);
           }}
+          loading={submitting}
         />
       </Modal>
     </div>

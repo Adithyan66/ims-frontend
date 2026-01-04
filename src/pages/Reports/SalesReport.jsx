@@ -5,6 +5,7 @@ import { customersService } from '../../services/customersService';
 import Button from '../../components/common/Button';
 import Table from '../../components/common/Table';
 import { exportUtils } from '../../utils/exportUtils';
+import { formatPrice } from '../../utils/formatters';
 
 const SalesReport = () => {
   const [sales, setSales] = useState([]);
@@ -12,6 +13,7 @@ const SalesReport = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState({ print: false, excel: false, pdf: false, email: false });
 
   useEffect(() => {
     fetchData();
@@ -76,48 +78,70 @@ const SalesReport = () => {
     return 0;
   };
 
+  const getTotalPriceFormatted = (sale) => {
+    return formatPrice(getTotalPrice(sale));
+  };
+
   const handlePrint = () => {
-    const columns = ['Date', 'Item', 'Quantity', 'Customer/Cash', 'Total Price'];
-    const rows = sales.map(sale => [
-      new Date(sale.date).toLocaleDateString(),
-      getItemName(sale.itemId),
-      sale.quantity,
-      getCustomerName(sale),
-      `₹${getTotalPrice(sale).toFixed(2)}`
-    ]);
-    exportUtils.printTable('Sales Report', columns, rows);
+    setExporting(prev => ({ ...prev, print: true }));
+    try {
+      const columns = ['Date', 'Item', 'Quantity', 'Customer/Cash', 'Total Price'];
+      const rows = sales.map(sale => [
+        new Date(sale.date).toLocaleDateString(),
+        getItemName(sale.itemId),
+        sale.quantity,
+        getCustomerName(sale),
+        formatPrice(getTotalPrice(sale))
+      ]);
+      exportUtils.printTable('Sales Report', columns, rows);
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, print: false })), 500);
+    }
   };
 
   const handleExcel = () => {
-    const data = sales.map(sale => ({
-      Date: new Date(sale.date).toLocaleDateString(),
-      Item: getItemName(sale.itemId),
-      Quantity: sale.quantity,
-      'Customer/Cash': getCustomerName(sale),
-      'Total Price': `₹${getTotalPrice(sale).toFixed(2)}`
-    }));
-    exportUtils.exportToExcel(data, 'sales-report');
+    setExporting(prev => ({ ...prev, excel: true }));
+    try {
+      const data = sales.map(sale => ({
+        Date: new Date(sale.date).toLocaleDateString(),
+        Item: getItemName(sale.itemId),
+        Quantity: sale.quantity,
+        'Customer/Cash': getCustomerName(sale),
+        'Total Price': formatPrice(getTotalPrice(sale))
+      }));
+      exportUtils.exportToExcel(data, 'sales-report');
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, excel: false })), 500);
+    }
   };
 
   const handlePDF = () => {
-    const columns = ['Date', 'Item', 'Quantity', 'Customer/Cash', 'Total Price'];
-    const rows = sales.map(sale => [
-      new Date(sale.date).toLocaleDateString(),
-      getItemName(sale.itemId),
-      sale.quantity.toString(),
-      getCustomerName(sale),
-      `₹${getTotalPrice(sale).toFixed(2)}`
-    ]);
-    exportUtils.exportToPDF(columns, rows, 'Sales Report', 'sales-report');
+    setExporting(prev => ({ ...prev, pdf: true }));
+    try {
+      const columns = ['Date', 'Item', 'Quantity', 'Customer/Cash', 'Total Price'];
+      const rows = sales.map(sale => [
+        new Date(sale.date).toLocaleDateString(),
+        getItemName(sale.itemId),
+        sale.quantity.toString(),
+        getCustomerName(sale),
+        formatPrice(getTotalPrice(sale))
+      ]);
+      exportUtils.exportToPDF(columns, rows, 'Sales Report', 'sales-report');
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, pdf: false })), 500);
+    }
   };
 
   const handleEmail = async () => {
     try {
+      setExporting(prev => ({ ...prev, email: true }));
       await reportsService.sendSalesReportEmail();
       alert('Sales report sent to your email successfully!');
     } catch (err) {
       setError('Failed to send email');
       console.error(err);
+    } finally {
+      setExporting(prev => ({ ...prev, email: false }));
     }
   };
 
@@ -141,32 +165,32 @@ const SalesReport = () => {
     { 
       key: 'total', 
       label: 'Total Price',
-      render: (_, row) => `₹${getTotalPrice(row).toFixed(2)}`
+      render: (_, row) => formatPrice(getTotalPrice(row))
     }
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Sales Report</h1>
+        <h1 className="text-2xl font-bold text-gray-200">Sales Report</h1>
         <div className="flex space-x-2">
-          <Button variant="secondary" onClick={handlePrint}>
-            Print
+          <Button variant="secondary" onClick={handlePrint} disabled={exporting.print}>
+            {exporting.print ? 'Printing...' : 'Print'}
           </Button>
-          <Button variant="secondary" onClick={handleExcel}>
-            Excel
+          <Button variant="secondary" onClick={handleExcel} disabled={exporting.excel}>
+            {exporting.excel ? 'Exporting...' : 'Excel'}
           </Button>
-          <Button variant="secondary" onClick={handlePDF}>
-            PDF
+          <Button variant="secondary" onClick={handlePDF} disabled={exporting.pdf}>
+            {exporting.pdf ? 'Generating...' : 'PDF'}
           </Button>
-          <Button variant="primary" onClick={handleEmail}>
-            Email
+          <Button variant="primary" onClick={handleEmail} disabled={exporting.email}>
+            {exporting.email ? 'Sending...' : 'Email'}
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-900 bg-opacity-30 border border-red-800 text-red-200 px-4 py-3 rounded">
           {error}
         </div>
       )}

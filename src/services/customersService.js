@@ -1,8 +1,23 @@
 import apiClient from './api';
 
 export const customersService = {
-  getAll: async () => {
-    const response = await apiClient.get('/customers');
+  getAll: async (page = 1, limit = 10) => {
+    const response = await apiClient.get(`/customers?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  search: async (query, page = 1, limit = 10) => {
+    const response = await apiClient.get(`/customers/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  getList: async (query = '') => {
+    let url = '/customers/list';
+    const trimmedQuery = query ? query.trim() : '';
+    if (trimmedQuery) {
+      url += `?q=${encodeURIComponent(trimmedQuery)}`;
+    }
+    const response = await apiClient.get(url);
     return response.data;
   },
 

@@ -3,11 +3,13 @@ import { reportsService } from '../../services/reportsService';
 import Button from '../../components/common/Button';
 import Table from '../../components/common/Table';
 import { exportUtils } from '../../utils/exportUtils';
+import { formatPrice } from '../../utils/formatters';
 
 const ItemsReport = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState({ print: false, excel: false, pdf: false });
 
   useEffect(() => {
     fetchData();
@@ -29,35 +31,50 @@ const ItemsReport = () => {
   };
 
   const handlePrint = () => {
-    const columns = ['Name', 'Description', 'Quantity', 'Price'];
-    const rows = items.map(item => [
-      item.name,
-      item.description,
-      item.quantity.toString(),
-      `₹${Number(item.price).toFixed(2)}`
-    ]);
-    exportUtils.printTable('Items Report', columns, rows);
+    setExporting(prev => ({ ...prev, print: true }));
+    try {
+      const columns = ['Name', 'Description', 'Quantity', 'Price'];
+      const rows = items.map(item => [
+        item.name,
+        item.description,
+        item.quantity.toString(),
+        formatPrice(item.price)
+      ]);
+      exportUtils.printTable('Items Report', columns, rows);
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, print: false })), 500);
+    }
   };
 
   const handleExcel = () => {
-    const data = items.map(item => ({
-      Name: item.name,
-      Description: item.description,
-      Quantity: item.quantity,
-      Price: `₹${Number(item.price).toFixed(2)}`
-    }));
-    exportUtils.exportToExcel(data, 'items-report');
+    setExporting(prev => ({ ...prev, excel: true }));
+    try {
+      const data = items.map(item => ({
+        Name: item.name,
+        Description: item.description,
+        Quantity: item.quantity,
+        Price: formatPrice(item.price)
+      }));
+      exportUtils.exportToExcel(data, 'items-report');
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, excel: false })), 500);
+    }
   };
 
   const handlePDF = () => {
-    const columns = ['Name', 'Description', 'Quantity', 'Price'];
-    const rows = items.map(item => [
-      item.name,
-      item.description,
-      item.quantity.toString(),
-      `₹${Number(item.price).toFixed(2)}`
-    ]);
-    exportUtils.exportToPDF(columns, rows, 'Items Report', 'items-report');
+    setExporting(prev => ({ ...prev, pdf: true }));
+    try {
+      const columns = ['Name', 'Description', 'Quantity', 'Price'];
+      const rows = items.map(item => [
+        item.name,
+        item.description,
+        item.quantity.toString(),
+        formatPrice(item.price)
+      ]);
+      exportUtils.exportToPDF(columns, rows, 'Items Report', 'items-report');
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, pdf: false })), 500);
+    }
   };
 
   const columns = [
@@ -67,29 +84,29 @@ const ItemsReport = () => {
     { 
       key: 'price', 
       label: 'Price',
-      render: (value) => `₹${Number(value).toFixed(2)}`
+      render: (value) => formatPrice(value)
     }
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Items Report</h1>
+        <h1 className="text-2xl font-bold text-gray-200">Items Report</h1>
         <div className="flex space-x-2">
-          <Button variant="secondary" onClick={handlePrint}>
-            Print
+          <Button variant="secondary" onClick={handlePrint} disabled={exporting.print}>
+            {exporting.print ? 'Printing...' : 'Print'}
           </Button>
-          <Button variant="secondary" onClick={handleExcel}>
-            Excel
+          <Button variant="secondary" onClick={handleExcel} disabled={exporting.excel}>
+            {exporting.excel ? 'Exporting...' : 'Excel'}
           </Button>
-          <Button variant="secondary" onClick={handlePDF}>
-            PDF
+          <Button variant="secondary" onClick={handlePDF} disabled={exporting.pdf}>
+            {exporting.pdf ? 'Generating...' : 'PDF'}
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-900 bg-opacity-30 border border-red-800 text-red-200 px-4 py-3 rounded">
           {error}
         </div>
       )}

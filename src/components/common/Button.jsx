@@ -3,7 +3,7 @@ const Button = ({ children, onClick, variant = 'primary', type = 'button', disab
   
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+    secondary: 'bg-gray-700 text-gray-200 hover:bg-gray-600',
     danger: 'bg-red-600 text-white hover:bg-red-700',
     success: 'bg-green-600 text-white hover:bg-green-700'
   };
@@ -21,4 +21,3 @@ const Button = ({ children, onClick, variant = 'primary', type = 'button', disab
 };
 
 export default Button;
-

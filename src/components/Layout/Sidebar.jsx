@@ -5,7 +5,6 @@ const Sidebar = ({ isOpen, onClose }) => {
   const { logout } = useAuth();
 
   const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/items', label: 'Inventory', icon: '📦' },
     { path: '/customers', label: 'Customers', icon: '👥' },
     { path: '/sales', label: 'Sales', icon: '💰' },
@@ -29,10 +28,18 @@ const Sidebar = ({ isOpen, onClose }) => {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
-            <h1 className="text-xl font-bold">IMS</h1>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-blue-500 tracking-tight">
+                adiyo
+              </h1>
+              <p className="text-xs font-semibold text-gray-300 tracking-wide -mt-1">
+                inventory system
+              </p>
+              <div className="mt-1 h-0.5 w-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+            </div>
             <button
               onClick={onClose}
-              className="lg:hidden text-gray-400 hover:text-white"
+              className="lg:hidden text-gray-400 hover:text-white transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

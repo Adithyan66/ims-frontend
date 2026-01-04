@@ -5,6 +5,7 @@ import { itemsService } from '../../services/itemsService';
 import Button from '../../components/common/Button';
 import Table from '../../components/common/Table';
 import { exportUtils } from '../../utils/exportUtils';
+import { formatPrice } from '../../utils/formatters';
 
 const CustomerLedger = () => {
   const [customers, setCustomers] = useState([]);
@@ -14,6 +15,7 @@ const CustomerLedger = () => {
   const [loading, setLoading] = useState(true);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState({ print: false, excel: false, pdf: false });
 
   useEffect(() => {
     fetchData();
@@ -53,7 +55,9 @@ const CustomerLedger = () => {
     try {
       setLoadingLedger(true);
       const response = await reportsService.getCustomerLedger(selectedCustomerId);
-      const ledgerData = response.data?.transactions || response.data?.data?.transactions || response.data || [];
+      // Response structure from API: { status: "success", data: [...], message: "..." }
+      // reportsService returns response.data, so response = { status: "success", data: [...], message: "..." }
+      const ledgerData = response.data || [];
       setLedger(Array.isArray(ledgerData) ? ledgerData : []);
       setError('');
     } catch (err) {
@@ -96,14 +100,19 @@ const CustomerLedger = () => {
       alert('Please select a customer first');
       return;
     }
-    const columns = ['Date', 'Item', 'Quantity', 'Total Price'];
-    const rows = ledger.map(sale => [
-      new Date(sale.date).toLocaleDateString(),
-      getItemName(sale.itemId),
-      sale.quantity.toString(),
-      `₹${getTotalPrice(sale).toFixed(2)}`
-    ]);
-    exportUtils.printTable(`${getSelectedCustomerName()} - Customer Ledger`, columns, rows);
+    setExporting(prev => ({ ...prev, print: true }));
+    try {
+      const columns = ['Date', 'Item', 'Quantity', 'Total Price'];
+      const rows = ledger.map(sale => [
+        new Date(sale.date).toLocaleDateString(),
+        getItemName(sale.itemId),
+        sale.quantity.toString(),
+        formatPrice(getTotalPrice(sale))
+      ]);
+      exportUtils.printTable(`${getSelectedCustomerName()} - Customer Ledger`, columns, rows);
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, print: false })), 500);
+    }
   };
 
   const handleExcel = () => {
@@ -111,13 +120,18 @@ const CustomerLedger = () => {
       alert('Please select a customer first');
       return;
     }
-    const data = ledger.map(sale => ({
-      Date: new Date(sale.date).toLocaleDateString(),
-      Item: getItemName(sale.itemId),
-      Quantity: sale.quantity,
-      'Total Price': `₹${getTotalPrice(sale).toFixed(2)}`
-    }));
-    exportUtils.exportToExcel(data, `${getSelectedCustomerName().replace(/\s+/g, '-')}-ledger`);
+    setExporting(prev => ({ ...prev, excel: true }));
+    try {
+      const data = ledger.map(sale => ({
+        Date: new Date(sale.date).toLocaleDateString(),
+        Item: getItemName(sale.itemId),
+        Quantity: sale.quantity,
+        'Total Price': formatPrice(getTotalPrice(sale))
+      }));
+      exportUtils.exportToExcel(data, `${getSelectedCustomerName().replace(/\s+/g, '-')}-ledger`);
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, excel: false })), 500);
+    }
   };
 
   const handlePDF = () => {
@@ -125,14 +139,19 @@ const CustomerLedger = () => {
       alert('Please select a customer first');
       return;
     }
-    const columns = ['Date', 'Item', 'Quantity', 'Total Price'];
-    const rows = ledger.map(sale => [
-      new Date(sale.date).toLocaleDateString(),
-      getItemName(sale.itemId),
-      sale.quantity.toString(),
-      `₹${getTotalPrice(sale).toFixed(2)}`
-    ]);
-    exportUtils.exportToPDF(columns, rows, `${getSelectedCustomerName()} - Customer Ledger`, `${getSelectedCustomerName().replace(/\s+/g, '-')}-ledger`);
+    setExporting(prev => ({ ...prev, pdf: true }));
+    try {
+      const columns = ['Date', 'Item', 'Quantity', 'Total Price'];
+      const rows = ledger.map(sale => [
+        new Date(sale.date).toLocaleDateString(),
+        getItemName(sale.itemId),
+        sale.quantity.toString(),
+        formatPrice(getTotalPrice(sale))
+      ]);
+      exportUtils.exportToPDF(columns, rows, `${getSelectedCustomerName()} - Customer Ledger`, `${getSelectedCustomerName().replace(/\s+/g, '-')}-ledger`);
+    } finally {
+      setTimeout(() => setExporting(prev => ({ ...prev, pdf: false })), 500);
+    }
   };
 
   const columns = [
@@ -150,43 +169,43 @@ const CustomerLedger = () => {
     { 
       key: 'total', 
       label: 'Total Price',
-      render: (_, row) => `₹${getTotalPrice(row).toFixed(2)}`
+      render: (_, row) => formatPrice(getTotalPrice(row))
     }
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Customer Ledger</h1>
+        <h1 className="text-2xl font-bold text-gray-200">Customer Ledger</h1>
         {selectedCustomerId && ledger.length > 0 && (
           <div className="flex space-x-2">
-            <Button variant="secondary" onClick={handlePrint}>
-              Print
+            <Button variant="secondary" onClick={handlePrint} disabled={exporting.print}>
+              {exporting.print ? 'Printing...' : 'Print'}
             </Button>
-            <Button variant="secondary" onClick={handleExcel}>
-              Excel
+            <Button variant="secondary" onClick={handleExcel} disabled={exporting.excel}>
+              {exporting.excel ? 'Exporting...' : 'Excel'}
             </Button>
-            <Button variant="secondary" onClick={handlePDF}>
-              PDF
+            <Button variant="secondary" onClick={handlePDF} disabled={exporting.pdf}>
+              {exporting.pdf ? 'Generating...' : 'PDF'}
             </Button>
           </div>
         )}
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-900 bg-opacity-30 border border-red-800 text-red-200 px-4 py-3 rounded">
           {error}
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-lg shadow">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="bg-gray-800 p-4 rounded-lg shadow">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           Select Customer
         </label>
         <select
           value={selectedCustomerId}
           onChange={(e) => setSelectedCustomerId(e.target.value)}
-          className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full md:w-1/3 px-3 py-2 bg-gray-800 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Choose a customer...</option>
           {customers.map(customer => (
@@ -206,7 +225,7 @@ const CustomerLedger = () => {
           emptyMessage="No transactions found for this customer"
         />
       ) : (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-400">
           Please select a customer to view their ledger
         </div>
       )}
