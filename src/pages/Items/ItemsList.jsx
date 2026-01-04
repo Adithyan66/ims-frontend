@@ -175,11 +175,11 @@ const ItemsList = () => {
       <div className="flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-200">Inventory Items</h1>
         <div className="flex items-center gap-3">
-          <div className="w-64">
+          <div className="w-36">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search by name..."
+              placeholder="Search..."
             />
           </div>
           <Button variant="primary" onClick={handleCreate}>

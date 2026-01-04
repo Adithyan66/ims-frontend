@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { reportsService } from '../../services/reportsService';
 import { customersService } from '../../services/customersService';
 import { itemsService } from '../../services/itemsService';
 import Button from '../../components/common/Button';
 import Table from '../../components/common/Table';
+import SearchBar from '../../components/common/SearchBar';
 import { exportUtils } from '../../utils/exportUtils';
 import { formatPrice } from '../../utils/formatters';
 
@@ -11,14 +12,76 @@ const CustomerLedger = () => {
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [ledger, setLedger] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState({ print: false, excel: false, pdf: false });
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [isCustomersDropdownOpen, setIsCustomersDropdownOpen] = useState(false);
+  const customersDropdownRef = useRef(null);
+  const customersSearchInputRef = useRef(null);
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const fetchCustomers = async () => {
+        try {
+          const query = customerSearchQuery.trim();
+          const response = await customersService.getList(query);
+          const customersData = response.data || response || [];
+          setCustomers(Array.isArray(customersData) ? customersData : []);
+        } catch (err) {
+          console.error('Error fetching customers:', err);
+        }
+      };
+      fetchCustomers();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [customerSearchQuery]);
+
+  useEffect(() => {
+    if (customerSearchQuery.trim() && customers.length > 0) {
+      setIsCustomersDropdownOpen(true);
+    } else if (customers.length === 0 && customerSearchQuery.trim()) {
+      setIsCustomersDropdownOpen(true);
+    }
+  }, [customers, customerSearchQuery]);
+
+  useEffect(() => {
+    if (selectedCustomerId && customers.length > 0) {
+      const customer = customers.find(c => c._id === selectedCustomerId);
+      if (customer) {
+        setSelectedCustomer(customer);
+      } else {
+        setSelectedCustomer(null);
+      }
+    } else if (!selectedCustomerId) {
+      setSelectedCustomer(null);
+    }
+  }, [selectedCustomerId, customers]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        customersDropdownRef.current && 
+        !customersDropdownRef.current.contains(event.target) && 
+        customersSearchInputRef.current && 
+        !customersSearchInputRef.current.contains(event.target)
+      ) {
+        setIsCustomersDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -33,11 +96,11 @@ const CustomerLedger = () => {
     try {
       setLoading(true);
       const [customersRes, itemsRes] = await Promise.all([
-        customersService.getAll(),
+        customersService.getList(''),
         itemsService.getAll()
       ]);
 
-      const customersData = customersRes.data?.customers || customersRes.data?.data?.customers || customersRes.data || [];
+      const customersData = customersRes.data || customersRes || [];
       const itemsData = itemsRes.data?.items || itemsRes.data?.data?.items || itemsRes.data || [];
 
       setCustomers(Array.isArray(customersData) ? customersData : []);
@@ -91,8 +154,26 @@ const CustomerLedger = () => {
   };
 
   const getSelectedCustomerName = () => {
-    const customer = customers.find(c => c._id === selectedCustomerId);
-    return customer ? customer.name : 'Customer';
+    return selectedCustomer ? selectedCustomer.name : 'Customer';
+  };
+
+  const handleCustomerSelect = (customer) => {
+    setSelectedCustomerId(customer._id);
+    setIsCustomersDropdownOpen(false);
+    setCustomerSearchQuery('');
+  };
+
+  const handleCustomersSearchChange = (value) => {
+    setCustomerSearchQuery(value);
+    if (!value.trim()) {
+      setIsCustomersDropdownOpen(false);
+    }
+  };
+
+  const handleCustomersSearchFocus = () => {
+    if (customerSearchQuery.trim()) {
+      setIsCustomersDropdownOpen(true);
+    }
   };
 
   const handlePrint = () => {
@@ -202,18 +283,43 @@ const CustomerLedger = () => {
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Select Customer
         </label>
-        <select
-          value={selectedCustomerId}
-          onChange={(e) => setSelectedCustomerId(e.target.value)}
-          className="w-full md:w-1/3 px-3 py-2 bg-gray-800 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Choose a customer...</option>
-          {customers.map(customer => (
-            <option key={customer._id} value={customer._id}>
-              {customer.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative" ref={customersDropdownRef}>
+          <div className="mb-2" ref={customersSearchInputRef}>
+            <SearchBar
+              value={customerSearchQuery}
+              onChange={handleCustomersSearchChange}
+              onFocus={handleCustomersSearchFocus}
+              placeholder={selectedCustomer ? selectedCustomer.name : "Search customers by name..."}
+              className="w-full"
+            />
+          </div>
+          {isCustomersDropdownOpen && customers.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+              {customers.map(customer => (
+                <button
+                  key={customer._id}
+                  type="button"
+                  onClick={() => handleCustomerSelect(customer)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 focus:bg-gray-700 focus:outline-none transition-colors border-b border-gray-700 last:border-b-0"
+                >
+                  <div className="font-medium">{customer.name}</div>
+                </button>
+              ))}
+            </div>
+          )}
+          {isCustomersDropdownOpen && customers.length === 0 && customerSearchQuery.trim() && (
+            <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg p-4 text-center text-sm text-gray-400">
+              No customers found
+            </div>
+          )}
+          {selectedCustomerId && !customerSearchQuery && selectedCustomer && (
+            <div className="mt-2 p-2 bg-gray-700/50 rounded-md border border-gray-600">
+              <div className="text-sm font-medium text-gray-200">
+                Selected: {selectedCustomer.name}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {loadingLedger ? (
